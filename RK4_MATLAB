@@ -1,0 +1,108 @@
+%%modeling rocket trajectory using Runga Kutta-4 (RK-4)-->
+
+clear all; close all; clc
+
+%given data-->
+tstart= 0; %sec
+tb= 1; %sec
+isp= 120;  %sec
+g= 32.2;   %ft/sec2
+c= isp*g; %ft/sec
+mi= 4; %lbf
+mp= 0.4; %lbm
+zeta= mp/mi;
+theta= 80; %degree
+h= 0.01; %time step (sec)
+Timepower= tstart:h:tb; %sec
+N1= (tb-tstart)/h; %no of iteration powered
+t2= 11.65+tstart;
+Timeapogee= tstart:h:t2;
+N2= (t2-tb)/h; %no of iteration
+
+%theortical powered fligh phase(no drag)-->
+Vx_tb= -c*log(1-zeta)*cosd(theta);
+Vy_tb= -c*log(1-zeta)*sind(theta)- (g*tb);
+time_array= [tstart, tb];
+V= [0, sqrt((Vx_tb)^2+(Vy_tb)^2)];
+hx_theo= [0, -c*(-tb+((zeta-1))*log(1-zeta)/(zeta/tb))*cosd(80)];
+hy_theo= [0, -c*(-tb+((zeta-1))*log(1-zeta)/(zeta/tb))*sind(80)-(0.5*g*tb^2*sind(80))];
+% plot(hx_theo, hy_theo)
+% hold on
+
+
+for i=1:N1
+    %powered flight RK-4 method-->
+    kxp_1= -c*log(1-((zeta*Timepower(i)/tb)))* h;
+    kxp_2= -c*log(1-((zeta*(Timepower(i)+ (0.5*h))/tb)))* h;
+    kxp_3= -c*log(1-((zeta*(Timepower(i)+ (0.5*h))/tb)))* h;
+    kxp_4= -c*log(1-((zeta*(Timepower(i)+h)/tb)))* h;
+    hxp_avg(i)= -c*(-Timepower(i)+(((zeta*Timepower(i))/tb)-1)*(log(1-((zeta*Timepower(i))/tb))/(zeta/tb)))*cosd(80);
+    hxp_avg(i+1)= hxp_avg(i)+ h* (1/6)*(kxp_1+(2*kxp_2)+ (2*kxp_3)+ (kxp_4));
+
+    kyp_1= (-c*log(1-((zeta*Timepower(i)/tb)))-(g*sind(theta)*Timepower(i))) * h;
+    kyp_2= (-c*log(1-((zeta*(Timepower(i)+ (0.5*h))/tb)))-(g*sind(theta)*(Timepower(i)*0.5*h))) * h;
+    kyp_3= (-c*log(1-((zeta*(Timepower(i)+ (0.5*h))/tb)))-(g*sind(theta)*(Timepower(i)*0.5*h)))  * h;
+    kyp_4= (-c*log(1-((zeta*(Timepower(i)+h)/tb)))-(g*sind(theta)*Timepower(i))) * h;
+    hyp_avg(i)= -c*(-Timepower(i)+(((zeta*Timepower(i))/tb)-1)*(log(1-((zeta*Timepower(i))/tb))/(zeta/tb)))*sind(80)-(0.5*g*Timepower(i)^2*sind(80));
+    hyp_avg(i+1)= hyp_avg(i)+ h* (1/6)*(kyp_1+(2*kyp_2)+ (2*kyp_3)+ (kyp_4));
+end
+
+plot(hxp_avg, hyp_avg)
+hold on
+
+for i=1:N2
+    %unpowered flight upto apogee RK-4-->
+    kxa_1= Vx_tb *h;
+    kxa_2= (Vx_tb + 0.5*kxa_1)* h;
+    kxa_3= (Vx_tb + 0.5*kxa_2)* h;
+    kxa_4= (Vx_tb + kxa_3)* h;
+   
+    hxa_avg(i)= hxp_avg(end) + Vx_tb*Timeapogee(i);
+    hxa_avg(i+1)= hxa_avg(i)+ h* (1/6)*(kxa_1+(2*kxa_2)+ (2*kxa_3)+ (kxa_4));
+
+    kya_1= -(g*sind(theta)*Timeapogee(i))*h;
+    kya_2= -(g*sind(theta)*(Timeapogee(i)+ 0.5*h))*h;
+    kya_3= -(g*sind(theta)*(Timeapogee(i)+ 0.5*h))*h;
+    kya_4= -(g*sind(theta)*(Timeapogee(i)+h))*h;
+    hya_avg(i)= hyp_avg(end) + Vy_tb*Timeapogee(i) - (0.5*g*Timeapogee(i)^2*sind(theta));
+    hya_avg(i+1)= hya_avg(i)+ h* (1/6)*(kya_1+(2*kya_2)+ (2*kya_3)+ (kya_4));
+
+end
+
+plot(hxa_avg, hya_avg)
+
+
+% to find time for impact (t3)-->
+t3= sqrt(hya_avg(end)/(g/2))+t2+tstart+0.1;
+
+Timeimpact= tstart:h:t3;
+N3= (t3-t2)/h;
+% Vx_t2= -h_xa(end)/t3;
+% Vy_t2=0;
+% disp(Vx_t2)
+%
+
+for i=1:N3
+    %unpowered flight until impact RK 4-->
+    kxi_1= Vx_tb *h;
+    kxi_2= (Vx_tb + 0.5*kxi_1)* h;
+    kxi_3= (Vx_tb + 0.5*kxi_2)* h;
+    kxi_4= (Vx_tb + kxi_3)* h;
+   
+    hxi_avg(i)= hxa_avg(end) + Vx_tb*Timeimpact(i);
+    hxi_avg(i+1)= hxi_avg(i)+ h* (1/6)*(kxi_1+(2*kxi_2)+ (2*kxi_3)+ (kxi_4));
+
+    kyi_1= (Vy_tb- (g*sind(theta)*Timeimpact(i))) *h;
+    kyi_2= (Vy_tb- (g*sind(theta)*(Timeimpact(i)+ 0.5*h))) *h;
+    kyi_3= (Vy_tb- (g*sind(theta)*(Timeimpact(i)+ 0.5*h))) *h;
+    kyi_4= (Vy_tb- (g*sind(theta)*Timeimpact(i))) *h;
+    hyi_avg(i)= hya_avg(end) - (0.5*g*(Timeimpact(i)^2)*sind(theta));
+    hyi_avg(i+1)= hyi_avg(i)+ h* (1/6)*(kyi_1+(2*kyi_2)+ (2*kyi_3)+ (kyi_4));
+end
+
+plot(hxi_avg, hyi_avg)
+
+title("Rocket Trajectory- RK4")
+xlabel('x distance traveled (feet)')
+ylabel('y distance traveled (feet)')
+legend('Powered flight' ,'Unpowered Ballistic motion', "Apogee to impact")
